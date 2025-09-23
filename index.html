@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trình Chiếu Hai Dashboard Looker</title>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #000;
+        }
+        .container {
+            width: 100%;
+            height: 100%;
+            display: none;
+            justify-content: center;
+            align-items: center;
+        }
+        .container.active {
+            display: flex;
+        }
+        iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container active" id="dashboard-container-1">
+        <iframe src="https://lookerstudio.google.com/reporting/ecbe3a8d-e884-46aa-8546-0e9d97e99f77/page/page_12345"></iframe>
+    </div>
+
+    <div class="container" id="dashboard-container-2">
+        <iframe src="https://lookerstudio.google.com/u/0/reporting/8d3258b9-dece-477b-82ec-92e334b03034/page/v4lxC"></iframe>
+    </div>
+
+    <script>
+        const dashboardContainer1 = document.getElementById('dashboard-container-1');
+        const dashboardContainer2 = document.getElementById('dashboard-container-2');
+
+        // THỜI GIAN HIỂN THỊ MỖI DASHBOARD (5 phút = 300000 ms)
+        const dashboardDuration = 300000;
+
+        // BẮT ĐẦU CHU KỲ TRÌNH CHIẾU
+        function startShow() {
+            // Hiển thị Dashboard 1
+            dashboardContainer1.classList.add('active');
+            dashboardContainer2.classList.remove('active');
+
+            // Sau 5 phút, chuyển sang Dashboard 2
+            setTimeout(() => {
+                showSecondDashboard();
+            }, dashboardDuration);
+        }
+
+        // HIỂN THỊ DASHBOARD 2
+        function showSecondDashboard() {
+            // Hiển thị Dashboard 2
+            dashboardContainer1.classList.remove('active');
+            dashboardContainer2.classList.add('active');
+
+            // Sau 5 phút, quay lại Dashboard 1
+            setTimeout(() => {
+                startShow();
+            }, dashboardDuration);
+        }
+        
+        // Gọi hàm bắt đầu lần đầu tiên
+        startShow();
+    </script>
+</body>
+</html>
