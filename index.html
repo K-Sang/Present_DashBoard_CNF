@@ -1,80 +1,109 @@
 <!DOCTYPE html>
 <html lang="vi">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Trình Chiếu Hai Dashboard Looker</title>
-    <style>
-        body, html {
-            margin: 0;
-            padding: 0;
-            width: 100%;
-            height: 100%;
-            overflow: hidden;
-            background-color: #000;
-        }
-        .container {
-            width: 100%;
-            height: 100%;
-            display: none;
-            justify-content: center;
-            align-items: center;
-        }
-        .container.active {
-            display: flex;
-        }
-        iframe {
-            width: 100%;
-            height: 100%;
-            border: none;
-        }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Trình chiếu Looker (16:9 + 4:3, center, no scroll, auto-refresh)</title>
+  <style>
+    html, body {
+      margin: 0; padding: 0;
+      width: 100vw; height: 100vh;
+      overflow: hidden; background: #000;      /* nền đen để pillarbox */
+    }
+    /* Sân khấu chiếm toàn màn, căn giữa nội dung */
+    .stage {
+      position: relative; width: 100vw; height: 100vh;
+      display: flex; align-items: center; justify-content: center;
+      background: #000;
+    }
+    /* Slide show 2 báo cáo luân phiên */
+    .slide { position: absolute; inset: 0; display: none;
+      align-items: center; justify-content: center; }
+    .slide.active { display: flex; }
+
+    /* Khung 16:9: lấy kích thước nhỏ nhất để giữ đúng tỷ lệ, không cuộn */
+    .frame16x9 {
+      width:  min(100vw, calc(100vh * 16 / 9));
+      height: min(100vh, calc(100vw * 9  / 16));
+      background: #000;
+    }
+    /* Khung 4:3: sẽ có viền đen hai bên trên màn 16:9 */
+    .frame4x3 {
+      width:  min(100vw, calc(100vh * 4 / 3));
+      height: min(100vh, calc(100vw * 3 / 4));
+      background: #000;
+    }
+    /* Iframe luôn lấp đầy khung */
+    .frame16x9 > iframe,
+    .frame4x3 > iframe {
+      width: 100%; height: 100%;
+      border: 0; display: block;
+    }
+  </style>
 </head>
 <body>
-
-    <div class="container active" id="dashboard-container-1">
-        <iframe width="600" height="450" src="https://lookerstudio.google.com/embed/reporting/ecbe3a8d-e884-46aa-8546-0e9d97e99f77/page/page_12345" frameborder="0" style="border:0" allowfullscreen sandbox="allow-storage-access-by-user-activation allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox"></iframe>
+  <div class="stage">
+    <!-- Slide 1: Looker 16:9 -->
+    <div class="slide active" id="slide1">
+      <div class="frame16x9">
+        <iframe
+          data-url="https://lookerstudio.google.com/embed/reporting/ecbe3a8d-e884-46aa-8546-0e9d97e99f77/page/page_12345?rm=minimal&chromeless=1"
+          allowfullscreen
+        ></iframe>
+      </div>
     </div>
 
-    <div class="container" id="dashboard-container-2">
-        <iframe src="https://lookerstudio.google.com/embed/reporting/8d3258b9-dece-477b-82ec-92e334b03034/page/v4lxC"></iframe>
+    <!-- Slide 2: Looker 4:3 -->
+    <div class="slide" id="slide2">
+      <div class="frame4x3">
+        <iframe
+          data-url="https://lookerstudio.google.com/embed/reporting/8d3258b9-dece-477b-82ec-92e334b03034/page/v4lxC?rm=minimal&chromeless=1"
+          allowfullscreen
+        ></iframe>
+      </div>
     </div>
+  </div>
 
-    <script>
-        const dashboardContainer1 = document.getElementById('dashboard-container-1');
-        const dashboardContainer2 = document.getElementById('dashboard-container-2');
+  <script>
+    // ===== Cấu hình =====
+    const DURATION_MS = 300000;            // Thời gian mỗi slide (5 phút)
+    const REFRESH_WHILE_SHOW_MS = 0;       // =0: tắt; ví dụ 900000 (15 phút) để refresh định kỳ khi đang hiển thị
 
-        // THỜI GIAN HIỂN THỊ MỖI DASHBOARD (5 phút = 300000 ms)
-        const dashboardDuration = 300000;
+    const slides = [document.getElementById('slide1'), document.getElementById('slide2')];
 
-        // BẮT ĐẦU CHU KỲ TRÌNH CHIẾU
-        function startShow() {
-            // Hiển thị Dashboard 1
-            dashboardContainer1.classList.add('active');
-            dashboardContainer2.classList.remove('active');
+    function refreshIframe(slideEl) {
+      const iframe = slideEl.querySelector('iframe');
+      if (!iframe) return;
+      const base = iframe.dataset.url || '';
+      if (!base) return;
+      const sep = base.includes('?') ? '&' : '?';
+      iframe.src = `${base}${sep}_ts=${Date.now()}`; // cache-buster => reload
+    }
 
-            // Sau 5 phút, chuyển sang Dashboard 2
-            setTimeout(() => {
-                showSecondDashboard();
-            }, dashboardDuration);
-        }
+    let current = 0;
+    let periodicRefreshTimer = null;
 
-        // HIỂN THỊ DASHBOARD 2
-        function showSecondDashboard() {
-            // Hiển thị Dashboard 2
-            dashboardContainer1.classList.remove('active');
-            dashboardContainer2.classList.add('active');
+    function show(i) {
+      slides.forEach((s, k) => s.classList.toggle('active', k === i));
+      refreshIframe(slides[i]);                        // Reload khi chuyển đến slide này
 
-            // Sau 5 phút, quay lại Dashboard 1
-            setTimeout(() => {
-                startShow();
-            }, dashboardDuration);
-        }
-        
-        // Gọi hàm bắt đầu lần đầu tiên
-        startShow();
-    </script>
+      // Thiết lập refresh định kỳ khi đang hiển thị (nếu bật)
+      clearInterval(periodicRefreshTimer);
+      if (REFRESH_WHILE_SHOW_MS > 0) {
+        periodicRefreshTimer = setInterval(() => refreshIframe(slides[i]), REFRESH_WHILE_SHOW_MS);
+      }
+    }
+
+    function loop() {
+      show(current);
+      current = (current + 1) % slides.length;
+      setTimeout(loop, DURATION_MS);
+    }
+
+    // Khởi động
+    loop();
+
+    // (khuyến nghị) Nhấn F11 để full-screen trình duyệt cho trải nghiệm sạch hơn
+  </script>
 </body>
-
 </html>
-
