@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Trình chiếu Looker CnF</title>
+  <title>Trình chiếu Looker (fill width 4:3, neo TOP)</title>
   <style>
     html, body {
       margin: 0; padding: 0;
@@ -11,123 +11,101 @@
       overflow: hidden; background: #000;
       font-family: system-ui, sans-serif;
     }
-    .stage {
-      position: relative; width: 100vw; height: 100vh;
-      display: flex; align-items: center; justify-content: center;
-      background: #000;
-    }
-    .slide { position: absolute; inset: 0; display: none;
-      align-items: center; justify-content: center; }
-    .slide.active { display: flex; }
+    .stage { position: relative; width: 100vw; height: 100vh; }
 
-    /* Fit đúng tỉ lệ, không cuộn */
-    .frame16x9 {
-      width:  min(100vw, calc(100vh * 16 / 9));
-      height: min(100vh, calc(100vw * 9  / 16));
-      background: #000;
-    }
-    .frame4x3 {
-      width:  min(100vw, calc(100vh * 4 / 3));
-      height: min(100vh, calc(100vw * 3 / 4));
-      background: #000;
-    }
-    .frame16x9 > iframe,
-    .frame4x3  > iframe {
-      width: 100%; height: 100%;
-      border: 0; display: block;
-    }
+    .slide { position: absolute; inset: 0; display: none; }
+    .slide.active { display: block; }
 
-    /* Nút full screen toàn trang */
-    .fs-btn {
-      position: fixed; right: 12px; top: 12px; z-index: 9999;
-      padding: 8px 10px; border-radius: 10px; border: 1px solid #4a4a4a;
-      background: rgba(0,0,0,.5); color: #fff; cursor: pointer;
-      font-size: 14px; user-select: none; backdrop-filter: blur(4px);
+    /* ===== Slide 1: 16:9 – fit-to-screen, không crop ===== */
+    .frame16x9{
+      width:  min(100vw, calc(100vh * 16/9));
+      height: min(100vh, calc(100vw * 9/16));
+      margin: auto;                    /* căn giữa trong slide */
+      background:#000;
     }
-    .fs-btn:hover { background: rgba(0,0,0,.7); }
+    .frame16x9 > iframe{ width:100%; height:100%; border:0; display:block; }
+
+    /* ===== Slide 2: 4:3 (1200×900) – FILL WIDTH, NEO TOP =====
+       - viewport-43: khung nhìn = 100vh, ẩn phần dư theo chiều dọc.
+       - frame-43-fillwidth: nội dung 4:3 rộng 100vw, cao = 100vw * 3/4.
+       - --y-offset: DỊCH DỌC nội dung (mặc định 0px = neo TOP, chỉ mất phía dưới).
+       - --bottom-mask: che “footer”/khoảng trắng đáy mà không dịch nội dung.
+    */
+    .viewport-43{
+      position: relative;
+      width: 100vw; height: 100vh;
+      overflow: hidden; background:#000;
+
+      --y-offset: 0px;       /* ⇐ CHỈNH Ở ĐÂY: 0px (neo TOP) | -20px (kéo lên) | +20px (kéo xuống) */
+      --bottom-mask: 0px;    /* ⇐ CHỈNH Ở ĐÂY: che đáy 0–40px nếu thấy footer */
+    }
+    .frame-43-fillwidth{
+      position: absolute; left: 0; top: var(--y-offset);
+      width: 100vw; height: calc(100vw * 3/4); /* 4:3 */
+      background:#000;
+    }
+    .frame-43-fillwidth > iframe{ width:100%; height:100%; border:0; display:block; }
+
+    /* Lớp CHE ĐÁY (không làm thay đổi vị trí nội dung) */
+    .viewport-43::after{
+      content:""; position:absolute; left:0; right:0; bottom:0;
+      height: var(--bottom-mask); background:#000; pointer-events:none;
+    }
   </style>
 </head>
 <body>
-  <button class="fs-btn" id="fsToggle" title="Nhấn F để bật/tắt full screen">⛶ Full screen</button>
-
   <div class="stage">
     <!-- Slide 1: Looker 16:9 -->
     <div class="slide active" id="slide1">
       <div class="frame16x9">
         <iframe
           data-url="https://lookerstudio.google.com/embed/reporting/ecbe3a8d-e884-46aa-8546-0e9d97e99f77/page/page_12345"
-          allowfullscreen
-          allow="fullscreen"
-        ></iframe>
+          allowfullscreen allow="fullscreen" referrerpolicy="strict-origin-when-cross-origin">
+        </iframe>
       </div>
     </div>
 
-    <!-- Slide 2: Looker 4:3 (1200×900) -->
+    <!-- Slide 2: Looker 4:3 – fill width, neo TOP -->
     <div class="slide" id="slide2">
-      <div class="frame4x3">
-        <iframe
-          data-url="https://lookerstudio.google.com/embed/reporting/8d3258b9-dece-477b-82ec-92e334b03034/page/v4lxC"
-          allowfullscreen
-          allow="fullscreen"
-        ></iframe>
+      <div class="viewport-43" style="--y-offset: 0px; --bottom-mask: 0px;">
+        <!-- ↑ chỉnh nhanh ngay tại đây khi cần -->
+        <div class="frame-43-fillwidth">
+          <iframe
+            data-url="https://lookerstudio.google.com/embed/reporting/8d3258b9-dece-477b-82ec-92e334b03034/page/v4lxC"
+            allowfullscreen allow="fullscreen" referrerpolicy="strict-origin-when-cross-origin">
+          </iframe>
+        </div>
       </div>
     </div>
   </div>
 
   <script>
-    // ===== Cấu hình =====
-    const DURATION_MS = 300000;      // 5 phút/slide
-    const REFRESH_WHILE_SHOW_MS = 0; // 0 = tắt refresh định kỳ
-
+    // ===== Slideshow cơ bản (luân phiên 2 slide) =====
+    const DURATION_MS = 10000; // 5 phút/slide
     const slides = [document.getElementById('slide1'), document.getElementById('slide2')];
+    let cur = 0, timer = null;
 
-    function refreshIframe(slideEl) {
-      const iframe = slideEl.querySelector('iframe');
-      if (!iframe) return;
-      const base = iframe.dataset.url || '';
-      if (!base) return;
+    function refresh(el){
+      const ifr = el.querySelector('iframe');
+      if(!ifr) return;
+      const base = ifr.dataset.url || '';
+      if(!base) return;
       const sep = base.includes('?') ? '&' : '?';
-      iframe.src = `${base}${sep}_ts=${Date.now()}`; // cache-buster => reload
+      ifr.src = `${base}${sep}_ts=${Date.now()}`; // reload khi tới slide
     }
-
-    let current = 0;
-    let periodicRefreshTimer = null;
-
-    function show(i) {
-      slides.forEach((s, k) => s.classList.toggle('active', k === i));
-      refreshIframe(slides[i]); // reload khi chuyển slide
-
-      clearInterval(periodicRefreshTimer);
-      if (REFRESH_WHILE_SHOW_MS > 0) {
-        periodicRefreshTimer = setInterval(() => refreshIframe(slides[i]), REFRESH_WHILE_SHOW_MS);
-      }
+    function show(i){
+      slides.forEach((s,k)=>s.classList.toggle('active', k===i));
+      refresh(slides[i]);
     }
-
-    function loop() {
-      show(current);
-      current = (current + 1) % slides.length;
-      setTimeout(loop, DURATION_MS);
+    function loop(){
+      clearTimeout(timer);
+      timer = setTimeout(()=>{
+        cur = (cur+1)%slides.length;
+        show(cur);
+        loop();
+      }, DURATION_MS);
     }
-
-    // ===== Fullscreen toàn trang (tuỳ chọn) =====
-    async function toggleFullscreen() {
-      if (!document.fullscreenElement) {
-        try { await document.documentElement.requestFullscreen(); } catch (e) {}
-      } else {
-        try { await document.exitFullscreen(); } catch (e) {}
-      }
-    }
-    document.getElementById('fsToggle').addEventListener('click', toggleFullscreen);
-    document.addEventListener('keydown', (e) => {
-      if (e.key.toLowerCase() === 'f') toggleFullscreen();
-    });
-
-    // Khởi động
-    loop();
-
-    // Ghi chú:
-    // - Nút Full screen của chính Looker sẽ xuất hiện vì ta đã bỏ rm=minimal & chromeless=1.
-    // - Bạn vẫn có thể nhấn F11 của trình duyệt, hoặc dùng nút ⛶ / phím F (Fullscreen API).
+    show(cur); loop();
   </script>
 </body>
 </html>
