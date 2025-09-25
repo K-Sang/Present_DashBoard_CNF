@@ -8,42 +8,48 @@
     html, body {
       margin: 0; padding: 0;
       width: 100vw; height: 100vh;
-      overflow: hidden; background: #000;      /* nền đen để pillarbox */
+      overflow: hidden; background: #000;
     }
-    /* Sân khấu chiếm toàn màn, căn giữa nội dung */
     .stage {
       position: relative; width: 100vw; height: 100vh;
       display: flex; align-items: center; justify-content: center;
       background: #000;
     }
-    /* Slide show 2 báo cáo luân phiên */
     .slide { position: absolute; inset: 0; display: none;
       align-items: center; justify-content: center; }
     .slide.active { display: flex; }
 
-    /* Khung 16:9: lấy kích thước nhỏ nhất để giữ đúng tỷ lệ, không cuộn */
+    /* Slide 1: giữ fit 16:9 (không crop) */
     .frame16x9 {
       width:  min(100vw, calc(100vh * 16 / 9));
       height: min(100vh, calc(100vw * 9  / 16));
       background: #000;
     }
-    /* Khung 4:3: sẽ có viền đen hai bên trên màn 16:9 */
-    .frame4x3 {
-      width:  min(100vw, calc(100vh * 4 / 3));
-      height: min(100vh, calc(100vw * 3 / 4));
+    .frame16x9 > iframe { width:100%; height:100%; border:0; display:block; }
+
+    /* === Slide 2: FILL-WIDTH 4:3 (1200x900) – KHÔNG còn 2 lề hai bên ===
+       - Khung viewport cao = 100vh, overflow hidden (ẩn phần dư).
+       - Bên trong là khung 4:3 rộng 100vw, cao = 100vw * 3/4 (~> có thể >100vh).
+       - Neo TOP để không bị mất phần đầu. Có thể tinh chỉnh --y-offset nếu cần. */
+    .viewport-43 {
+      position: relative;
+      width: 100vw; height: 100vh;
+      overflow: hidden;               /* quan trọng: ẩn phần dư ở dưới */
+      background: #000;
+      --y-offset: 0px;                /* +px để đẩy nội dung xuống, -px để kéo lên */
+    }
+    .frame-43-fillwidth {
+      position: absolute; left: 0; top: var(--y-offset);
+      width: 100vw;
+      height: calc(100vw * 3 / 4);    /* 4:3 = 900/1200 = 0.75 */
       background: #000;
     }
-    /* Iframe luôn lấp đầy khung */
-    .frame16x9 > iframe,
-    .frame4x3 > iframe {
-      width: 100%; height: 100%;
-      border: 0; display: block;
-    }
+    .frame-43-fillwidth > iframe { width:100%; height:100%; border:0; display:block; }
   </style>
 </head>
 <body>
   <div class="stage">
-    <!-- Slide 1: Looker 16:9 -->
+    <!-- Slide 1: Looker 16:9 (giữ như cũ) -->
     <div class="slide active" id="slide1">
       <div class="frame16x9">
         <iframe
@@ -53,21 +59,23 @@
       </div>
     </div>
 
-    <!-- Slide 2: Looker 4:3 -->
+    <!-- Slide 2: Looker 4:3 (1200×900) – FILL WIDTH, KHÔNG còn 2 lề đen -->
     <div class="slide" id="slide2">
-      <div class="frame4x3">
-        <iframe
-          data-url="https://lookerstudio.google.com/embed/reporting/8d3258b9-dece-477b-82ec-92e334b03034/page/v4lxC?rm=minimal&chromeless=1"
-          allowfullscreen
-        ></iframe>
+      <div class="viewport-43" style="--y-offset: 0px;">
+        <div class="frame-43-fillwidth">
+          <iframe
+            data-url="https://lookerstudio.google.com/embed/reporting/8d3258b9-dece-477b-82ec-92e334b03034/page/v4lxC?rm=minimal&chromeless=1"
+            allowfullscreen
+          ></iframe>
+        </div>
       </div>
     </div>
   </div>
 
   <script>
     // ===== Cấu hình =====
-    const DURATION_MS = 300000;            // Thời gian mỗi slide (5 phút)
-    const REFRESH_WHILE_SHOW_MS = 0;       // =0: tắt; ví dụ 900000 (15 phút) để refresh định kỳ khi đang hiển thị
+    const DURATION_MS = 300000;      // 5 phút/slide
+    const REFRESH_WHILE_SHOW_MS = 0; // 0=tắt refresh định kỳ
 
     const slides = [document.getElementById('slide1'), document.getElementById('slide2')];
 
@@ -77,7 +85,7 @@
       const base = iframe.dataset.url || '';
       if (!base) return;
       const sep = base.includes('?') ? '&' : '?';
-      iframe.src = `${base}${sep}_ts=${Date.now()}`; // cache-buster => reload
+      iframe.src = `${base}${sep}_ts=${Date.now()}`; // cache-buster
     }
 
     let current = 0;
@@ -85,12 +93,14 @@
 
     function show(i) {
       slides.forEach((s, k) => s.classList.toggle('active', k === i));
-      refreshIframe(slides[i]);                        // Reload khi chuyển đến slide này
+      refreshIframe(slides[i]);
 
-      // Thiết lập refresh định kỳ khi đang hiển thị (nếu bật)
       clearInterval(periodicRefreshTimer);
       if (REFRESH_WHILE_SHOW_MS > 0) {
-        periodicRefreshTimer = setInterval(() => refreshIframe(slides[i]), REFRESH_WHILE_SHOW_MS);
+        periodicRefreshTimer = setInterval(
+          () => refreshIframe(slides[i]),
+          REFRESH_WHILE_SHOW_MS
+        );
       }
     }
 
@@ -100,11 +110,7 @@
       setTimeout(loop, DURATION_MS);
     }
 
-    // Khởi động
-    loop();
-
-    // (khuyến nghị) Nhấn F11 để full-screen trình duyệt cho trải nghiệm sạch hơn
+    loop(); // Khởi động
   </script>
 </body>
 </html>
-
